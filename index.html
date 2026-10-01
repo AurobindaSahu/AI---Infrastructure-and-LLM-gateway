@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gateway Studio - LLMOps Dashboard</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f17;
+      --card-bg: #131722;
+      --border-color: #21262d;
+      --input-bg: #0d1117;
+      --accent-yellow: #f59e0b;
+      --accent-yellow-hover: #d97706;
+      --text-main: #e6edf3;
+      --text-muted: #8b949e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+    body { background-color: var(--bg-dark); color: var(--text-main); padding: 24px; min-height: 100vh; }
+
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 24px; height: 24px; background-color: var(--accent-yellow); transform: rotate(45deg); border-radius: 4px; }
+    .brand-title { font-size: 16px; font-weight: 600; }
+    .brand-subtitle { font-size: 12px; color: var(--text-muted); font-family: monospace; }
+    .header-status { display: flex; align-items: center; gap: 16px; }
+    .status-badge { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+    .dot { width: 8px; height: 8px; background-color: #3fb950; border-radius: 50%; box-shadow: 0 0 8px #3fb95088; }
+    .pill { background: #21262d; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: var(--text-muted); }
+
+    .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; padding-bottom: 12px; }
+    .tab { color: var(--text-muted); font-size: 14px; font-family: monospace; cursor: pointer; padding-bottom: 10px; }
+    .tab.active { color: var(--text-main); border-bottom: 2px solid var(--accent-yellow); margin-bottom: -13px; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .container { display: grid; grid-template-columns: 420px 1fr; gap: 20px; }
+    .panel { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .panel-title { font-size: 15px; font-weight: 600; }
+    .method-badge { background-color: #f59e0b22; color: var(--accent-yellow); font-family: monospace; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid #f59e0b44; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    select, textarea, input { width: 100%; background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); padding: 10px 12px; font-size: 13px; outline: none; }
+    select:focus, textarea:focus, input:focus { border-color: var(--accent-yellow); }
+    textarea { height: 110px; resize: vertical; font-family: monospace; }
+
+    .btn-send { width: 100%; height: 140px; background-color: var(--accent-yellow); border: none; border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: flex-end; padding: 20px; transition: background-color 0.2s ease; }
+    .btn-send:hover { background-color: var(--accent-yellow-hover); }
+    .btn-send svg { width: 80px; height: 80px; fill: none; stroke: #0b0f17; stroke-width: 2; }
+    .btn-send-text { color: #0b0f17; font-weight: 700; font-size: 16px; text-align: right; }
+
+    .btn-action { background-color: var(--accent-yellow); color: #0b0f17; font-weight: 600; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-action:hover { background-color: var(--accent-yellow-hover); }
+
+    .right-col { display: flex; flex-direction: column; gap: 20px; }
+    .response-box { background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; min-height: 220px; font-family: monospace; font-size: 13px; color: var(--text-muted); white-space: pre-wrap; }
+    .response-box.has-content { color: var(--text-main); }
+    
+    .telemetry-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .telemetry-card { background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; }
+    .telemetry-label { font-size: 10px; color: var(--text-muted); font-family: monospace; margin-bottom: 8px; }
+    .telemetry-value { font-size: 14px; font-weight: 600; font-family: monospace; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; text-align: left; font-size: 13px; }
+    th { background-color: var(--input-bg); color: var(--text-muted); padding: 12px; border-bottom: 1px solid var(--border-color); font-family: monospace; }
+    td { padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); font-family: monospace; }
+    tr:hover { background-color: #161b22; }
+
+    .check-result { margin-top: 16px; padding: 12px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; font-family: monospace; font-size: 12px; display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon"></div>
+      <div>
+        <div class="brand-title">Gateway Studio</div>
+        <div class="brand-subtitle">llmops.gateway.internal</div>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-badge"><span class="dot"></span> All systems operational</div>
+      <div class="pill">production</div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('playground')">playground</div>
+    <div class="tab" onclick="switchTab('registry')">registry</div>
+    <div class="tab" onclick="switchTab('analytics')">analytics</div>
+  </div>
+
+  <!-- TAB 1: PLAYGROUND -->
+  <div id="playground" class="tab-content active">
+    <div class="container">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Request Builder</span>
+        </div>
+        <div class="form-group">
+          <label>Requested Model</label>
+          <select id="modelSelect">
+            <option value="gemini/gemini-2.0-flash">gemini/gemini-2.0-flash</option>
+            <option value="openai/gpt-4o">openai/gpt-4o</option>
+            <option value="cluade/claude-3-5-sonnet-20241022">cluade/claude-3-5-sonnet-20241022</option>
+            <option value="groq/llama-3.3-70b-versatile">groq/llama-3.3-70b-versatile</option>
+            <option value="groq/llama-3.1-8b-instant">groq/llama-3.1-8b-instant</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Prompt Name (Path Param)</label>
+          <input type="text" id="promptName" placeholder="e.g. raj">
+        </div>
+        <div class="form-group">
+          <label>User Input (Saved as Template Text)</label>
+          <textarea id="userInput" placeholder="Type user query here..."></textarea>
+        </div>
+        <button class="btn-send" id="sendBtn">
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="btn-send-text">Send<br>Request</span>
+        </button>
+      </div>
+
+      <div class="right-col">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Response</span></div>
+          <div class="response-box" id="responseBox">// send a request to see the model's response here</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Telemetry</span></div>
+          <div class="telemetry-grid">
+            <div class="telemetry-card"><div class="telemetry-label">🕒 LATENCY</div><div class="telemetry-value" id="valLatency">—</div></div>
+            <div class="telemetry-card"><div class="telemetry-label"># TOKENS USED</div><div class="telemetry-value" id="valTokens">—</div></div>
+            <div class="telemetry-card"><div class="telemetry-label">88 STATUS CODE</div><div class="telemetry-value" id="valStatus">—</div></div>
+            <div class="telemetry-card"><div class="telemetry-label">🤖 MODEL</div><div class="telemetry-value" id="valModel">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PROMPT REGISTRY -->
+  <div id="registry" class="tab-content">
+    <div class="container" style="grid-template-columns: 360px 1fr;">
+      
+      <!-- CHECK PROMPT PANEL -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Check Prompt</span></div>
+        <div class="form-group">
+          <label>Prompt Name</label>
+          <input type="text" id="checkName" placeholder="e.g. raj">
+        </div>
+        <div class="form-group">
+          <label>Version (Optional)</label>
+          <input type="text" id="checkVersion" placeholder="e.g. v1">
+        </div>
+        <button class="btn-action" onclick="checkPrompt()" style="width: 100%;">Check Prompt</button>
+
+        <div id="checkResult" class="check-result"></div>
+      </div>
+
+      <!-- SAVED PROMPTS TABLE -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Saved Prompts</span>
+          <button class="pill" onclick="loadPrompts()">🔄 Refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Version</th><th>Template Text</th><th>Created At</th></tr>
+          </thead>
+          <tbody id="promptsTable"><tr><td colspan="5">Loading prompts...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: ANALYTICS LOGS -->
+  <div id="analytics" class="tab-content">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">API Execution Logs</span>
+        <button class="pill" onclick="loadAnalytics()">🔄 Refresh</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Timestamp</th><th>Requested Model</th><th>Actual Model</th><th>Latency (s)</th><th>Status</th></tr>
+        </thead>
+        <tbody id="analyticsTable"><tr><td colspan="6">Loading execution logs...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'registry') loadPrompts();
+      if (tabId === 'analytics') loadAnalytics();
+    }
+
+    // Playground Chat Execution + Auto-Save Prompt to Registry
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const model = document.getElementById('modelSelect').value;
+      const promptName = document.getElementById('promptName').value.trim() || 'raj';
+      const promptText = document.getElementById('userInput').value.trim() || 'hi';
+
+      const responseBox = document.getElementById('responseBox');
+      responseBox.textContent = '// Auto-saving prompt version & generating response...';
+
+      try {
+        // Step 1: Auto-save prompt name and text (Server calculates next version v1, v2, etc.)
+        const saveEndpoint = `http://127.0.0.1:8000/prompts/create?name=${encodeURIComponent(promptName)}&template_text=${encodeURIComponent(promptText)}`;
+        await fetch(saveEndpoint, { method: 'POST' });
+
+        // Step 2: Execute Chat Request
+        const chatEndpoint = `http://127.0.0.1:8000/${encodeURIComponent(promptName)}/chat?requested_model=${encodeURIComponent(model)}&prompt=${encodeURIComponent(promptText)}`;
+        const res = await fetch(chatEndpoint, { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok && data.status === 'success') {
+          responseBox.classList.add('has-content');
+          responseBox.textContent = data.data.message;
+          document.getElementById('valLatency').textContent = `${data.data.time} s`;
+          document.getElementById('valTokens').textContent = data.data["prompt tokens"] + data.data.complection;
+          document.getElementById('valStatus').textContent = '200 OK';
+          document.getElementById('valModel').textContent = data.data.model;
+        } else {
+          responseBox.textContent = `// Error: ${JSON.stringify(data, null, 2)}`;
+        }
+      } catch (err) {
+        responseBox.textContent = `// Connection Error: ${err}`;
+      }
+    });
+
+    // Registry: Load Prompts
+    async function loadPrompts() {
+      const tbody = document.getElementById('promptsTable');
+      try {
+        const res = await fetch('http://127.0.0.1:8000/prompts');
+        const data = await res.json();
+        tbody.innerHTML = data.data.map(p => `
+          <tr>
+            <td>${p.id}</td>
+            <td><b>${p.name}</b></td>
+            <td><span class="pill" style="color:#f59e0b">${p.version}</span></td>
+            <td>${p.template_text}</td>
+            <td>${p.created_at}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5">Failed to load prompts.</td></tr>';
+      }
+    }
+
+    // Registry: Check Prompt
+    async function checkPrompt() {
+      const name = document.getElementById('checkName').value.trim();
+      const version = document.getElementById('checkVersion').value.trim();
+      const resultBox = document.getElementById('checkResult');
+
+      if (!name) return alert("Please enter a prompt name to check.");
+
+      let url = `http://127.0.0.1:8000/prompt/${encodeURIComponent(name)}`;
+      if (version) url += `?version=${encodeURIComponent(version)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        resultBox.style.display = 'block';
+
+        if (res.ok) {
+          resultBox.innerHTML = `
+            <b style="color:#3fb950">✓ Found Prompt:</b><br>
+            <b>ID:</b> ${data.data.id}<br>
+            <b>Name:</b> ${data.data.name}<br>
+            <b>Version:</b> ${data.data.version}<br>
+            <b>Template Text:</b> ${data.data.prompt}
+          `;
+        } else {
+          resultBox.innerHTML = `<b style="color:#f85149">✗ Not Found:</b> ${data.detail || "Prompt not found"}`;
+        }
+      } catch (err) {
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = `<b style="color:#f85149">Error querying backend.</b>`;
+      }
+    }
+
+    // Analytics: Load Execution Logs
+    async function loadAnalytics() {
+      const tbody = document.getElementById('analyticsTable');
+      try {
+        const res = await fetch('http://127.0.0.1:8000/analytics/logs');
+        const data = await res.json();
+        tbody.innerHTML = data.data.map(l => `
+          <tr>
+            <td>${l.id}</td>
+            <td>${l.timestamp}</td>
+            <td>${l.requested_model}</td>
+            <td><b>${l.actual_model_used}</b></td>
+            <td>${l.latency_ms}</td>
+            <td><span class="pill" style="color: ${l.status_code === 200 ? '#3fb950' : '#f85149'}">${l.status_code}</span></td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="6">Failed to load analytics logs.</td></tr>';
+      }
+    }
+  </script>
+</body>
+</html>
